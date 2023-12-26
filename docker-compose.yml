@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  veda:
+    build: .
+    image: veda-bvm:latest
+    volumes:
+      - ./rootdir:/rootdir
+      - ./data:/data
+    restart: always
+    ports:
+      - "8545:8545"
+      - "8679:8679"

@@ -1,0 +1,14 @@
+from veda.vm.forks.veda.blocks import VedaBlockHeader
+
+
+# HeaderSedes = ShanghaiBackwardsHeader
+HeaderSedes = VedaBlockHeader
+"""
+An RLP codec that can decode *all* known header types.
+
+Unfortunately, we often cannot look up the VM to determine the valid codec. For
+example, when looking up a header by hash, we don't have the block number yet,
+and so can't load the VM configuration to find out which VM's rules to use to
+decode the header. Also, it's useful to have this universal sedes class when
+decoding multiple uncles that span a fork block.
+"""

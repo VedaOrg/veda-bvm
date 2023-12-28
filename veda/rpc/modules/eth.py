@@ -47,6 +47,7 @@ from veda.exceptions import (
     HeaderNotFound,
     TransactionNotFound,
 )
+from veda.vm.forks.veda import VedaBlock
 
 from veda.vm.spoof import (
     SpoofTransaction,
@@ -68,7 +69,7 @@ from veda.rpc.format import (
     normalize_transaction_dict,
     to_int_if_hex,
     to_receipt_response,
-    transaction_to_dict,
+    transaction_to_dict, to_log_dict,
 )
 from veda.rpc.modules.base import (
     Eth1ChainRPCModule,
@@ -90,7 +91,7 @@ from veda.sync.common.events import (
 from veda.rpc._utils.transactions import DefaultTransactionValidator
 from veda.rpc._utils.validation import (
     validate_transaction_call_dict,
-    validate_transaction_gas_estimation_dict,
+    validate_transaction_gas_estimation_dict, validate_filter_params,
 )
 
 
@@ -380,6 +381,63 @@ class Eth(Eth1ChainRPCModule):
         # return header_to_dict(uncle)
 
         raise NotImplementedError("getUncleByBlockNumberAndIndex is not supported")
+
+    async def getLogs(self, filter_params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Validate the filter params
+        filter_params = validate_filter_params(filter_params)
+
+        if filter_params.blockHash:
+            # validate the block hash
+            block = await self.chain.coro_get_block_by_hash(decode_hex(filter_params.blockHash))
+            filter_params.fromBlock = block.header.block_number
+            filter_params.toBlock = block.header.block_number
+            from_block = block.header.block_number
+            to_block = block.header.block_number
+        else:
+            current_header = await self.chain.coro_get_canonical_head()
+            if filter_params.fromBlock is None:
+                filter_params.fromBlock = current_header.block_number
+            if filter_params.toBlock is None:
+                filter_params.toBlock = current_header.block_number
+
+            from_block = int(filter_params.fromBlock, 16)
+            to_block = int(filter_params.toBlock, 16)
+
+        resp = []
+        for block_number in range(from_block, to_block + 1):
+            block = cast(VedaBlock, await self.chain.coro_get_canonical_block_by_number(block_number))
+
+            receipts = block.get_receipts(self.chain.chaindb)
+            for idx, (transaction, receipt) in enumerate(zip(block.transactions, receipts)):
+                for log in receipt.logs:
+                    # filter address field
+                    if filter_params.address:
+                        if isinstance(filter_params.address, str):
+                            address_filter = [decode_hex(filter_params.address)]
+                        else:
+                            address_filter = [decode_hex(address) for address in filter_params.address]
+
+                        if log.address not in address_filter:
+                            continue
+
+                    # filter topics field
+                    if filter_params.topics:
+                        if len(filter_params.topics) >= 4:
+                            raise ValidationError("Topics param length is too long")
+
+                        topics_filtered = False
+                        for idx in range(min(len(filter_params.topics), len(log.topics))):
+                            if (filter_params.topics[idx] is not None
+                                    and int.from_bytes(decode_hex(filter_params.topics[idx]), 'big') != log.topics[idx]):
+                                topics_filtered = True
+                                break
+
+                        if topics_filtered:
+                            continue
+
+                    data = to_log_dict(block, log, transaction, idx)
+                    resp.append(data)
+        return resp
 
     @format_params(decode_hex)
     async def sendRawTransaction(self,

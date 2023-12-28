@@ -34,7 +34,7 @@ from veda.abc import (
     BlockAPI,
     BlockHeaderAPI,
     ReceiptAPI,
-    SignedTransactionAPI,
+    SignedTransactionAPI, LogAPI,
 )
 from veda.constants import (
     CREATE_CONTRACT_ADDRESS,
@@ -57,6 +57,20 @@ def format_bloom(bloom: int) -> str:
     formatted_bloom = encode_hex(int_to_big_endian(bloom))[2:]
     formatted_bloom = '0x' + formatted_bloom.rjust(512, '0')
     return formatted_bloom
+
+
+def to_log_dict(block: BlockAPI, log: LogAPI, transaction: SignedTransactionAPI, idx: int) -> Dict[str, Any]:
+    return {
+        "address": to_checksum_address(log.address),
+        "blockHash": encode_hex(block.hash),
+        "blockNumber": hex(block.number),
+        "data": encode_hex(log.data),
+        "logIndex": hex(idx),
+        "removed": False,
+        "topics": [encode_hex(topic.to_bytes(32, 'big')) for topic in log.topics],
+        "transactionHash": encode_hex(transaction.hash),
+        "transactionIndex": hex(idx),
+    }
 
 
 def to_receipt_response(receipt: ReceiptAPI,

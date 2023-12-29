@@ -218,7 +218,7 @@ class VedaConfig:
                 },
                     'params': {
                         'vedaForkBlock': '0x00',
-                        'chainId': '0x01'
+                        'chainId': '0x112c'
                     }
                 }
         # else:

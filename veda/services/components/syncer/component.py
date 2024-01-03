@@ -35,14 +35,9 @@ class SyncerComponent(AsyncioIsolatedComponent):
     @classmethod
     def configure_parser(cls, arg_parser: ArgumentParser, subparser: _SubParsersAction) -> None:
         arg_parser.add_argument(
-            "--disable-internal-rpc",
-            action="store_true",
-            help="Disables the JSON-RPC server",
-        )
-        arg_parser.add_argument(
             "--internal-rpc-http-listen-address",
             type=str,
-            help="Address for the HTTP server to listen on",
+            help="Address for the Internal RPC HTTP server to listen on",
             default="127.0.0.1",
         )
         arg_parser.add_argument(
@@ -54,7 +49,7 @@ class SyncerComponent(AsyncioIsolatedComponent):
         arg_parser.add_argument(
             "--enable-internal-rpc-debug-mode",
             action='store_true',
-            help="Enable server side debug mode",
+            help="Enable Internal RPC server side debug mode",
             # default=False,
         )
 

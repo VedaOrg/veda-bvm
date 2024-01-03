@@ -373,7 +373,6 @@ def main_entry(veda_boot: BootFn,
 def get_base_db(boot_info: BootInfo) -> LevelDB:
     app_config = boot_info.veda_config.get_app_config(VedaAppConfig)
     base_db = LevelDB(db_path=app_config.database_dir)
-    # base_db = LevelDB(db_path='/tmp/mydb.db')
     chaindb = ChainDB(base_db)
     if not is_database_initialized(chaindb):
         chain_config = app_config.get_chain_config()
@@ -383,19 +382,6 @@ def get_base_db(boot_info: BootInfo) -> LevelDB:
 def veda_boot_fn(boot_info: BootInfo) -> None:
     veda_config = boot_info.veda_config
     ensure_veda_dirs(veda_config.get_app_config(VedaAppConfig))
-
-def set_logger(name):
-    setup_DEBUG2_logging()
-    logger = get_logger(name)
-
-    handler = logging.StreamHandler(sys.stdout)
-
-    level = logging.DEBUG2
-
-    logger.setLevel(level)
-
-    logger.addHandler(handler)
-
 
 def main():
     os.environ['ASYNCIO_RUN_IN_PROCESS_STARTUP_TIMEOUT'] = '3000'

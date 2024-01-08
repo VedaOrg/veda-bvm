@@ -27,29 +27,3 @@ class Veda(BaseRPCModule):
         Returns the current network ID.
         """
         return "OK"
-    #
-    # @format_params(decode_hex)
-    # async def getVRC20Balances(self, address: Address) -> Dict[Address, str]:
-    #     """
-    #     Returns the current network ID.
-    #     """
-    #
-    #     try:
-    #         response = await asyncio.wait_for(
-    #             self.event_bus.request(
-    #                 QueryBalanceForAccount(address=address),
-    #                 BroadcastConfig(filter_endpoint='vrc20_tracer')
-    #             ),
-    #             timeout=3,
-    #         )
-    #     except asyncio.TimeoutError as exc:
-    #         raise RpcError(
-    #             f"getVRC20Balances request timed out")
-    #     #
-    #     # response = await self.event_bus.request(
-    #     #     QueryBalanceForAccount(address=address),
-    #     #     TO_VEDA_BROADCAST_CONFIG
-    #     # )
-    #
-    #     result = response.balances
-    #     return result

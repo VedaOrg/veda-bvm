@@ -230,14 +230,14 @@ class Eth(Eth1ChainRPCModule):
                              block_hash: Hash32,
                              include_transactions: bool) -> RpcBlockResponse:
         block = await self.chain.coro_get_block_by_hash(block_hash)
-        return block_to_dict(block, self.chain, include_transactions)
+        return await block_to_dict(block, self.chain, include_transactions)
 
     @format_params(to_int_if_hex, identity)
     async def getBlockByNumber(self,
                                at_block: Union[str, int],
                                include_transactions: bool) -> RpcBlockResponse:
         block = await get_block_at_number(self.chain, at_block)
-        return block_to_dict(block, self.chain, include_transactions)
+        return await block_to_dict(block, self.chain, include_transactions)
 
     @format_params(decode_hex)
     async def getBlockTransactionCountByHash(self, block_hash: Hash32) -> str:

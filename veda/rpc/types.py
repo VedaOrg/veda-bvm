@@ -70,6 +70,8 @@ class RpcBlockTransactionResponse(RpcTransactionResponse):
     blockNumber: str
     blockHash: HexStr
 
+    transactionIndex: str
+
 
 class RpcHeaderResponse(TypedDict):
     difficulty: str

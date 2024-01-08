@@ -42,8 +42,8 @@ def validate_request(request: Dict[str, Any]) -> None:
 
 def generate_response(request: Dict[str, Any], result: Any, error: Union[Exception, str]) -> str:
     response = {
-        'id': request.get('id', -1),
         'jsonrpc': request.get('jsonrpc', "2.0"),
+        'id': request.get('id', -1),
     }
 
     if error is None:
@@ -200,5 +200,15 @@ class RPCServer:
         if self.blocking_request:
             await self.resume_event.wait()
 
+        if isinstance(request, list):
+            # batch request
+            results = []
+            for req in request:
+                result, error = await self._get_result(req, disallowed_modules)
+                results.append(json.loads(generate_response(req, result, error)))
+
+            return json.dumps(results)
+
         result, error = await self._get_result(request, disallowed_modules)
-        return generate_response(request, result, error)
+        resp = generate_response(request, result, error)
+        return resp

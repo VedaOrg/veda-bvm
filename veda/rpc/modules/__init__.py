@@ -16,6 +16,10 @@ def initialize_veda_modules(chain: AsyncChainAPI,
                             veda_config: VedaConfig) -> Iterable[BaseRPCModule]:
     from .eth import Eth  # noqa: F401
     from .veda import Veda
+    from .net import Net
+    from .txpool import TxPool
 
     yield Eth(chain, event_bus, veda_config)
     yield Veda(event_bus, veda_config)
+    yield TxPool(event_bus, veda_config)
+    yield Net(event_bus)

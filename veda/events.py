@@ -36,6 +36,11 @@ class NewBlockImportFinished(BaseEvent):
     timestamp: int
 
 @dataclass
+class NewBlockImportCanceled(BaseEvent):
+    timestamp: int
+    reason: str
+
+@dataclass
 class AvailableEndpointsUpdated(BaseEvent):
     """
     Broadcasted by the ``main`` :class:`~lahja.endpoint.Endpoint` after it has received a

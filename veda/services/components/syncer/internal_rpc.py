@@ -24,7 +24,7 @@ from eth_utils import (
 
 from lahja import EndpointAPI
 
-from veda.events import NewBlockImportStarted, NewBlockImportFinished
+from veda.events import NewBlockImportStarted, NewBlockImportFinished, NewBlockImportCanceled
 from veda.exceptions import VMError
 from veda.rpc.base import AsyncChainAPI
 from veda.rpc.chain import VedaAsyncChain
@@ -62,8 +62,8 @@ def validate_request(request: Dict[str, Any]) -> None:
 
 def generate_response(request: Dict[str, Any], result: Any, error: Union[Exception, str]) -> str:
     response = {
-        'id': request.get('id', -1),
         'jsonrpc': request.get('jsonrpc', "2.0"),
+        'id': request.get('id', -1),
     }
 
     if error is None:
@@ -114,100 +114,111 @@ class InternalRPCServer:
             FIRE_AND_FORGET_BROADCASTING,
         )
 
-        # TODO: exception handling
-        block_params: SyncBlockModel = SyncBlockModel.model_validate(params[0])
-        transactions = params[1]
+        try:
+            # TODO: exception handling
+            block_params: SyncBlockModel = SyncBlockModel.model_validate(params[0])
+            transactions = params[1]
 
-        self.validate_block_params(block_params)
+            self.validate_block_params(block_params)
 
-        self.logger.debug("Syncing block %s", block_params.blockNumber)
+            self.logger.debug("Syncing block %s", block_params.blockNumber)
 
-        chain = cast(VedaAsyncChain, self.chain)
-        vm = chain.get_vm()
-        vm_header = vm.get_header()
-        block_max_gas = vm_header.gas_limit
-        # 检查新的 header 是不是当前 header 的下一块
-        block_number = block_params.blockNumber
-        applying_transactions = []
+            chain = cast(VedaAsyncChain, self.chain)
+            vm = chain.get_vm()
+            vm_header = vm.get_header()
+            block_max_gas = vm_header.gas_limit
+            # 检查新的 header 是不是当前 header 的下一块
+            block_number = block_params.blockNumber
+            applying_transactions = []
 
-        # 检查 block header 合法性
-        if block_number != vm_header.block_number:
-            raise ValidationError(
-                f"This VM instance must only work on block #{vm_header}, "  # noqa: E501
-                f"but the target header has block #{block_number}"
-            )
-
-        block_hash = decode_hex(block_params.blockHash)
-        if len(block_hash) != 32:
-            raise ValidationError(
-                f"Invalid block hash: {block_params.blockHash}"
-            )
-
-        mix_hash = decode_hex(block_params.mixHash)
-        if len(mix_hash) != 32:
-            raise ValidationError(
-                f"Invalid mix hash: {block_params.blockHash}"
-            )
-
-        # 检查每笔 transaction 的合法性
-
-        for transaction_idx, transaction in enumerate(transactions):
-            tx = SyncTransactionModel.model_validate(transaction)
-
-            sender = decode_hex(tx.sender)
-            if len(sender) != 20:
+            # 检查 block header 合法性
+            if block_number != vm_header.block_number:
                 raise ValidationError(
-                    f"Invalid sender address: {tx.sender}"
+                    f"This VM instance must only work on block #{vm_header}, "  # noqa: E501
+                    f"but the target header has block #{block_number}"
                 )
 
-            data = decode_hex(tx.data)
-            tx_hash = decode_hex(tx.txHash)
-            if len(tx_hash) != 32:
+            block_hash = decode_hex(block_params.blockHash)
+            if len(block_hash) != 32:
                 raise ValidationError(
-                    f"Invalid tx hash: {tx.txHash}"
+                    f"Invalid block hash: {block_params.blockHash}"
                 )
 
-            address_to = decode_hex(tx.to)
+            mix_hash = decode_hex(block_params.mixHash)
+            if len(mix_hash) != 32:
+                raise ValidationError(
+                    f"Invalid mix hash: {block_params.blockHash}"
+                )
 
-            # TODO: 最大 gas 从 block header 中获取
-            vm_tx = VedaTransaction(nonce=tx.nonce,
-                                        veda_sender=sender,
-                                        gas=block_max_gas,
-                                        to=address_to,
-                                        data=data,
-                                        veda_txhash=tx_hash)
+            # 检查每笔 transaction 的合法性
 
-            applying_transactions.append(vm_tx)
+            for transaction_idx, transaction in enumerate(transactions):
+                tx = SyncTransactionModel.model_validate(transaction)
 
-        applying_transactions_tuple = tuple(applying_transactions)
+                sender = decode_hex(tx.sender)
+                if len(sender) != 20:
+                    raise ValidationError(
+                        f"Invalid sender address: {tx.sender}"
+                    )
 
-        new_block, _receipts, _computations = chain.apply_transactions(applying_transactions_tuple)
+                data = decode_hex(tx.data)
+                tx_hash = decode_hex(tx.txHash)
+                if len(tx_hash) != 32:
+                    raise ValidationError(
+                        f"Invalid tx hash: {tx.txHash}"
+                    )
 
-        # TODO: (txHash, transaction) 到日志 FullChain DB
+                address_to = decode_hex(tx.to)
 
-        # TODO: 需新定义 mine_block, 将 veda 的 meta 信息(veda_blockNumber,veda_blockHash, veda_timestamp) 编码到 block 中
-        mined_block = chain.mine_block(
-            mix_hash=mix_hash,
-            veda_block_hash=block_hash,
-            veda_block_number=block_params.blockNumber,
-            veda_timestamp=block_params.timestamp,
-        )
+                # TODO: 最大 gas 从 block header 中获取
+                vm_tx = VedaTransaction(nonce=tx.nonce,
+                                            veda_sender=sender,
+                                            gas=block_max_gas,
+                                            to=address_to,
+                                            data=data,
+                                            veda_txhash=tx_hash)
 
-        self.logger.debug(
-            "%s contains %d transactions, %d succeeded, veda blockHash: %s",  # noqa: E501
-            mined_block,
-            len(mined_block.transactions),
-            len(_receipts),
-            block_params.blockHash
-        )
+                applying_transactions.append(vm_tx)
 
-        # 导入完成以后，广播新块已成功导入事件、数据库解锁事件
-        self.event_bus.broadcast_nowait(
-            NewBlockImportFinished(
-                int(time.time())
-            ),
-            FIRE_AND_FORGET_BROADCASTING,
-        )
+            applying_transactions_tuple = tuple(applying_transactions)
+
+            new_block, _receipts, _computations = chain.apply_transactions(applying_transactions_tuple)
+
+            # TODO: (txHash, transaction) 到日志 FullChain DB
+
+            # TODO: 需新定义 mine_block, 将 veda 的 meta 信息(veda_blockNumber,veda_blockHash, veda_timestamp) 编码到 block 中
+            mined_block = chain.mine_block(
+                mix_hash=mix_hash,
+                veda_block_hash=block_hash,
+                veda_block_number=block_params.blockNumber,
+                veda_timestamp=block_params.timestamp,
+            )
+
+            self.logger.debug(
+                "%s contains %d transactions, %d succeeded, veda blockHash: %s",  # noqa: E501
+                mined_block,
+                len(mined_block.transactions),
+                len(_receipts),
+                block_params.blockHash
+            )
+
+            # 导入完成以后，广播新块已成功导入事件、数据库解锁事件
+            self.event_bus.broadcast_nowait(
+                NewBlockImportFinished(
+                    int(time.time())
+                ),
+                FIRE_AND_FORGET_BROADCASTING,
+            )
+        except Exception as e:
+            self.event_bus.broadcast_nowait(
+                NewBlockImportCanceled(
+                    int(time.time()),
+                    str(e)
+                ),
+                FIRE_AND_FORGET_BROADCASTING,
+            )
+
+            raise e
 
     async def _handle_get_latest_block(self, params):
         chain = cast(VedaAsyncChain, self.chain)

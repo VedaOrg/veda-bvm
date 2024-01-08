@@ -20,7 +20,7 @@ from veda.config import (
     VedaAppConfig,
     VedaConfig
 )
-from veda.events import NewBlockImportStarted, NewBlockImportFinished
+from veda.events import NewBlockImportStarted, NewBlockImportFinished, NewBlockImportCanceled
 from veda.rpc.base import AsyncChainAPI
 from veda.db.manager import DBClient
 from veda.extensibility import (
@@ -172,6 +172,11 @@ class JsonRpcServerComponent(AsyncioIsolatedComponent):
 
             event_bus.subscribe(
                 NewBlockImportFinished,
+                lambda ev: rpc.resume_request()
+            )
+
+            event_bus.subscribe(
+                NewBlockImportCanceled,
                 lambda ev: rpc.resume_request()
             )
 

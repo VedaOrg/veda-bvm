@@ -37,7 +37,7 @@ from veda.abc import (
     SignedTransactionAPI, LogAPI,
 )
 from veda.constants import (
-    CREATE_CONTRACT_ADDRESS,
+    CREATE_CONTRACT_ADDRESS, ZERO_ADDRESS, ZERO_HASH32,
 )
 
 from veda.rpc.base import AsyncChainAPI
@@ -90,13 +90,14 @@ def to_receipt_response(receipt: ReceiptAPI,
     block_number = hex(header.block_number)
     receipt_and_transaction_index = hex(index)
     transaction_hash = encode_hex(transaction.hash)
+
     return {
         "blockHash": block_hash,
         "blockNumber": block_number,
         "contractAddress": contract_address,
         "cumulativeGasUsed": hex(receipt.gas_used),
         "from": encode_hex(transaction.sender),
-        'gasUsed': hex(tx_gas_used),
+        'gasUsed': hex(tx_gas_used) if tx_gas_used >= 0 else hex(0),
         "logs": [
             {
                 "address": encode_hex(log.address),
@@ -108,7 +109,7 @@ def to_receipt_response(receipt: ReceiptAPI,
                 # which means this can never be `True`
                 "removed": False,
                 "topics": [
-                    encode_hex(int_to_big_endian(topic)) for topic in log.topics
+                    encode_hex(int_to_big_endian(topic).rjust(32, b'\x00')) for topic in log.topics
                 ],
                 "transactionHash": transaction_hash,
                 "transactionIndex": receipt_and_transaction_index,
@@ -116,7 +117,7 @@ def to_receipt_response(receipt: ReceiptAPI,
             for log in receipt.logs
         ],
         "logsBloom": format_bloom(receipt.bloom),
-        "root": encode_hex(receipt.state_root),
+        "status": "0x00" if receipt.state_root == b'' else encode_hex(receipt.state_root),  # be compatible with previous db
         "to": apply_formatter_if(
             is_address,
             to_checksum_address,
@@ -141,18 +142,35 @@ def access_list_to_json(
 
 
 def transaction_to_dict(transaction: SignedTransactionAPI) -> RpcTransactionResponse:
+    address_from = to_checksum_address(transaction.sender)
+    address_to = apply_formatter_if(
+            is_address,
+            to_checksum_address,
+            encode_hex(transaction.to))
+
+    if address_from == '0x':
+        address_from = None
+
+    if address_to == '0x':
+        address_to = None
+
     base_dict = {
         'hash': encode_hex(transaction.hash),
         'nonce': hex(transaction.nonce),
         'gas': hex(transaction.gas),
-        'from': to_checksum_address(transaction.sender),
-        'to': apply_formatter_if(
-            is_address,
-            to_checksum_address,
-            encode_hex(transaction.to)
-        ),
+        'from': address_from,
+        'to': address_to,
         'input': encode_hex(transaction.data),
         'chainId': hex(transaction.chain_id) if transaction.chain_id else None,
+
+        'value': hex(0),
+        'gasPrice': hex(0),
+        'gasUsed': hex(0),
+        # 'transactionIndex': transaction.transaction_index,
+        # compatible with explorer
+        "r": hex(0),
+        "s": hex(0),
+        "v": hex(0),
     }
     #
     # if transaction.type_id is None:
@@ -171,11 +189,15 @@ def transaction_to_dict(transaction: SignedTransactionAPI) -> RpcTransactionResp
     return base_dict
 
 
-def block_transaction_to_dict(transaction: SignedTransactionAPI,
+async def block_transaction_to_dict(chain: AsyncChainAPI,
+                              transaction: SignedTransactionAPI,
                               header: BlockHeaderAPI) -> RpcBlockTransactionResponse:
     data = cast(RpcBlockTransactionResponse, transaction_to_dict(transaction))
     data['blockHash'] = encode_hex(header.hash)
     data['blockNumber'] = hex(header.block_number)
+
+    block_num, index = await chain.coro_get_canonical_transaction_index(transaction.hash)
+    data['transactionIndex'] = hex(index)
 
     return data
 
@@ -209,24 +231,27 @@ def header_to_dict(header: BlockHeaderAPI) -> RpcHeaderResponse:
     return {
         "difficulty": hex(header.difficulty),
         "extraData": encode_hex(header.extra_data),
+        # "extraData": "0x",
         "gasLimit": hex(header.gas_limit),
         "gasUsed": hex(header.gas_used),
         "hash": encode_hex(header.hash),
         "logsBloom": format_bloom(header.bloom),
+        "miner": encode_hex(ZERO_ADDRESS),  # Dummy for ETH RPC compatible
         "mixHash": encode_hex(header.mix_hash),
         # "nonce": encode_hex(header.nonce),
+        "nonce": encode_hex(b"\x00\x00\x00\x00\x00\x00\x00\x00"),
         "number": hex(header.block_number),
         "parentHash": encode_hex(header.parent_hash),
         "receiptsRoot": encode_hex(header.receipt_root),
-        # "sha3Uncles": encode_hex(header.uncles_hash),
+        "sha3Uncles": encode_hex(ZERO_HASH32),  # Dummy for ETH RPC compatible
         "stateRoot": encode_hex(header.state_root),
         "timestamp": hex(header.timestamp),
         "transactionsRoot": encode_hex(header.transaction_root),
+        "baseFeePerGas": hex(0)
         # "miner": encode_hex(header.coinbase),
     }
 
-
-def block_to_dict(block: BlockAPI,
+async def block_to_dict(block: BlockAPI,
                   chain: AsyncChainAPI,
                   include_transactions: bool) -> RpcBlockResponse:
 
@@ -236,13 +261,15 @@ def block_to_dict(block: BlockAPI,
 
     if include_transactions:
         txs: Union[Sequence[str], Sequence[RpcBlockTransactionResponse]] = [
-            block_transaction_to_dict(tx, block.header) for tx in block.transactions
+            await block_transaction_to_dict(chain, tx, block.header) for tx in block.transactions
         ]
+
     else:
         txs = [encode_hex(tx.hash) for tx in block.transactions]
 
     response['totalDifficulty'] = hex(chain.get_score(block.hash))
     # response['uncles'] = [encode_hex(uncle.hash) for uncle in block.uncles]
+    response['uncles'] = []
     response['size'] = hex(len(rlp.encode(block)))
     response['transactions'] = txs
 

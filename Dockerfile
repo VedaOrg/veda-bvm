@@ -9,4 +9,4 @@ RUN python setup.py install
 
 RUN mkdir /data && mkdir /rootdir
 
-ENTRYPOINT ["veda", "--veda-root-dir=/rootdir", "--data-dir=/data", "--enable-http-apis=eth,veda", "--internal-rpc-http-listen-address=0.0.0.0"]
+ENTRYPOINT ["veda", "--veda-root-dir=/rootdir", "--data-dir=/data", "--enable-http-apis=eth,veda,net,txpool", "--internal-rpc-http-listen-address=0.0.0.0"]

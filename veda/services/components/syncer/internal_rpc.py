@@ -189,6 +189,7 @@ class InternalRPCServer:
             # TODO: 需新定义 mine_block, 将 veda 的 meta 信息(veda_blockNumber,veda_blockHash, veda_timestamp) 编码到 block 中
             mined_block = chain.mine_block(
                 mix_hash=mix_hash,
+                timestamp=block_params.timestamp,
                 veda_block_hash=block_hash,
                 veda_block_number=block_params.blockNumber,
                 veda_timestamp=block_params.timestamp,

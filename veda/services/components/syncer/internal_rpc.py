@@ -115,7 +115,6 @@ class InternalRPCServer:
         )
 
         try:
-            # TODO: exception handling
             block_params: SyncBlockModel = SyncBlockModel.model_validate(params[0])
             transactions = params[1]
 
@@ -170,7 +169,6 @@ class InternalRPCServer:
 
                 address_to = decode_hex(tx.to)
 
-                # TODO: 最大 gas 从 block header 中获取
                 vm_tx = VedaTransaction(nonce=tx.nonce,
                                             veda_sender=sender,
                                             gas=block_max_gas,
@@ -184,9 +182,6 @@ class InternalRPCServer:
 
             new_block, _receipts, _computations = chain.apply_transactions(applying_transactions_tuple)
 
-            # TODO: (txHash, transaction) 到日志 FullChain DB
-
-            # TODO: 需新定义 mine_block, 将 veda 的 meta 信息(veda_blockNumber,veda_blockHash, veda_timestamp) 编码到 block 中
             mined_block = chain.mine_block(
                 mix_hash=mix_hash,
                 timestamp=block_params.timestamp,

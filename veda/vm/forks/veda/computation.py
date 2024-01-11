@@ -89,6 +89,7 @@ class VedaComputation(BaseComputation):
     """
 
     opcodes = VEDA_OPCODES
+    _precompiles = PRECOMPILES
 
     def __init__(
         self,

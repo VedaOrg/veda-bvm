@@ -14,7 +14,7 @@ from veda.vm.logic.system import Create as CreateEth, Create2 as Create2Eth, Cre
 from .constants import (
     INITCODE_WORD_COST
 )
-from veda.vm.logic.call import DelegateCallEIP150, StaticCall, CallCodeEIP150, CallEIP161, CallParams
+from veda.vm.logic.call import DelegateCallEIP150, StaticCall, CallCodeEIP150, CallEIP161, CallParams, CallByzantium
 
 
 def _account_load_cost(was_cold: bool) -> int:
@@ -178,31 +178,8 @@ class LoadFeeByCacheWarmth:
         return _account_load_cost(was_cold)
 
 
-class CallVeda(LoadFeeByCacheWarmth, CallEIP161):
-    def get_call_params(self, computation: ComputationAPI) -> CallParams:
-        gas = computation.stack_pop1_int()
-        to = force_bytes_to_address(computation.stack_pop1_bytes())
-
-        (
-            memory_input_start_position,
-            memory_input_size,
-            memory_output_start_position,
-            memory_output_size,
-        ) = computation.stack_pop_ints(4)
-
-        return (
-            gas,
-            0,  # value
-            to,
-            None,  # sender
-            None,  # code_address
-            memory_input_start_position,
-            memory_input_size,
-            memory_output_start_position,
-            memory_output_size,
-            False,  # should_transfer_value,
-            True,  # is_static
-        )
+class CallVeda(LoadFeeByCacheWarmth, CallByzantium):
+    pass
 
 class DelegateCallVeda(LoadFeeByCacheWarmth, DelegateCallEIP150):
     pass

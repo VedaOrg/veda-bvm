@@ -163,6 +163,8 @@ class BaseCall(Opcode, ABC):
 
             child_computation = computation.apply_child_computation(child_msg)
 
+            child_computation.call_type = self.mnemonic
+
             if child_computation.is_error:
                 computation.stack_push_int(0)
             else:

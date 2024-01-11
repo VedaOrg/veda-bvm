@@ -52,6 +52,7 @@ from veda.typing import (
     JournalDBCheckpoint,
     VMConfiguration,
 )
+from veda.vm import opcode_values
 
 T = TypeVar("T")
 
@@ -1721,6 +1722,9 @@ class ComputationAPI(
     children: List["ComputationAPI"]
     return_data: bytes = b""
     accounts_to_delete: Dict[Address, Address]
+
+    # trace feature: add call_type for children computation
+    call_type: str = 'CALL'
 
     _memory: MemoryAPI
     _stack: StackAPI

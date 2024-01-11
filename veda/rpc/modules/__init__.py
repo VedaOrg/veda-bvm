@@ -18,8 +18,10 @@ def initialize_veda_modules(chain: AsyncChainAPI,
     from .veda import Veda
     from .net import Net
     from .txpool import TxPool
+    from .trace import Trace
 
     yield Eth(chain, event_bus, veda_config)
     yield Veda(event_bus, veda_config)
     yield TxPool(event_bus, veda_config)
     yield Net(event_bus)
+    yield Trace(chain, event_bus, veda_config)

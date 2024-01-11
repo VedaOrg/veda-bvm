@@ -46,8 +46,10 @@ class PyEVMError(Exception):
     """
     Base class for all py-evm errors.
     """
+    desc = 'EVMError'
 
-    pass
+    def __str__(self):
+        return self.desc
 
 
 class VMNotFound(PyEVMError):
@@ -167,40 +169,35 @@ class OutOfGas(VMError):
     """
     Raised when a VM execution has run out of gas.
     """
-
-    pass
+    desc = 'OutOfGas'
 
 
 class InsufficientStack(VMError):
     """
     Raised when the stack is empty.
     """
-
-    pass
+    desc = 'InsufficientStack'
 
 
 class FullStack(VMError):
     """
     Raised when the stack is full.
     """
-
-    pass
+    desc = 'FullStack'
 
 
 class InvalidJumpDestination(VMError):
     """
     Raised when the jump destination for a JUMPDEST operation is invalid.
     """
-
-    pass
+    desc = 'InvalidJumpDestination'
 
 
 class InvalidInstruction(VMError):
     """
     Raised when an opcode is invalid.
     """
-
-    pass
+    desc = 'InvalidInstruction'
 
 
 class InsufficientFunds(VMError):
@@ -208,24 +205,21 @@ class InsufficientFunds(VMError):
     Raised when an account has insufficient funds to transfer the
     requested value.
     """
-
-    pass
+    desc = 'InsufficientFunds'
 
 
 class StackDepthLimit(VMError):
     """
     Raised when the call stack has exceeded it's maximum allowed depth.
     """
-
-    pass
+    desc = 'StackDepthLimit'
 
 
 class ContractCreationCollision(VMError):
     """
     Raised when there was an address collision during contract creation.
     """
-
-    pass
+    desc = 'ContractCreationCollision'
 
 
 class IncorrectContractCreationAddress(VMError):
@@ -233,8 +227,7 @@ class IncorrectContractCreationAddress(VMError):
     Raised when the address provided by transaction does not
     match the calculated contract creation address.
     """
-
-    pass
+    desc = 'IncorrectContractCreationAddress'
 
 
 class Revert(VMError):
@@ -244,6 +237,7 @@ class Revert(VMError):
 
     burns_gas = False
     erases_return_data = False
+    desc = 'Reverted'
 
 
 class WriteProtection(VMError):
@@ -251,8 +245,7 @@ class WriteProtection(VMError):
     Raised when an attempt to modify the state database is made while
     operating inside of a STATICCALL context.
     """
-
-    pass
+    desc = 'WriteProtection'
 
 
 class OutOfBoundsRead(VMError):
@@ -260,8 +253,7 @@ class OutOfBoundsRead(VMError):
     Raised when an attempt was made to read data beyond the
     boundaries of the buffer (such as with RETURNDATACOPY)
     """
-
-    pass
+    desc = 'OutOfBoundsRead'
 
 
 class ReservedBytesInCode(VMError):
@@ -269,5 +261,4 @@ class ReservedBytesInCode(VMError):
     Raised when bytes for the code to be deployed are reserved
     for a particular reason.
     """
-
-    pass
+    desc = 'ReservedBytesInCode'

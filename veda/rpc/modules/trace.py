@@ -37,8 +37,8 @@ def transaction_trace_result(computation: 'ComputationAPI', block: BlockAPI, tra
     # Append transaction to result
     data = {
         "action": {
-            "from": encode_hex(transaction.sender),
-            "gas": hex(transaction.gas),
+            "from": encode_hex(computation.msg.sender),
+            "gas": hex(computation.msg.gas),
             "value": hex(0)  # fix value to 0
         },
         "blockHash": encode_hex(block.hash),
@@ -55,17 +55,17 @@ def transaction_trace_result(computation: 'ComputationAPI', block: BlockAPI, tra
     }
 
     if computation.msg.is_create:
-        data["action"]["init"] = encode_hex(transaction.data)
+        data["action"]["init"] = encode_hex(computation.msg.data_as_bytes)
         data["result"]["code"] = encode_hex(computation.output)
         data["result"]["address"] = encode_hex(computation.msg.storage_address)
     else:
         data["action"]["callType"] = computation.call_type.lower()
-        data["action"]["input"] = encode_hex(transaction.data)
-        data["action"]["to"] = encode_hex(transaction.to)
+        data["action"]["input"] = encode_hex(computation.msg.data_as_bytes)
+        data["action"]["to"] = encode_hex(computation.msg.to)
         data["result"]["output"] = encode_hex(computation.output)
 
     if computation.is_error:
-        computation.error.__str__()
+        data["error"] = str(computation.error)
 
     result.append(data)
 

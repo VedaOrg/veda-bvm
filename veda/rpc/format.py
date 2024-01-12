@@ -75,7 +75,8 @@ def to_log_dict(block: BlockAPI, log: LogAPI, transaction: SignedTransactionAPI,
 
 def to_receipt_response(receipt: ReceiptAPI,
                         transaction: SignedTransactionAPI,
-                        index: int,
+                        transaction_idx: int,
+                        log_idx_base: int,
                         header: BlockHeaderAPI,
                         tx_gas_used: int) -> RpcReceiptResponse:
 
@@ -88,7 +89,7 @@ def to_receipt_response(receipt: ReceiptAPI,
 
     block_hash = encode_hex(header.hash)
     block_number = hex(header.block_number)
-    receipt_and_transaction_index = hex(index)
+    receipt_and_transaction_index = hex(transaction_idx)
     transaction_hash = encode_hex(transaction.hash)
 
     return {
@@ -104,7 +105,7 @@ def to_receipt_response(receipt: ReceiptAPI,
                 "data": encode_hex(log.data),
                 "blockHash": block_hash,
                 "blockNumber": block_number,
-                "logIndex": receipt_and_transaction_index,
+                "logIndex": hex(log_idx_base + receipt_log_idx),
                 # We only serve receipts from transactions that ended up in the canonical chain
                 # which means this can never be `True`
                 "removed": False,
@@ -114,7 +115,7 @@ def to_receipt_response(receipt: ReceiptAPI,
                 "transactionHash": transaction_hash,
                 "transactionIndex": receipt_and_transaction_index,
             }
-            for log in receipt.logs
+            for receipt_log_idx, log in enumerate(receipt.logs)
         ],
         "logsBloom": format_bloom(receipt.bloom),
         "status": "0x00" if receipt.state_root == b'' else encode_hex(receipt.state_root),  # be compatible with previous db

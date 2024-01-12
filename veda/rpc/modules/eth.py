@@ -339,6 +339,15 @@ class Eth(Eth1ChainRPCModule):
             tx_index
         )
 
+        # calculate log_idx_base
+        log_idx_base = 0
+        for i in range(tx_index - 1):
+            receipt = await self.chain.coro_get_transaction_receipt_by_index(
+                tx_block_number,
+                tx_index
+            )
+            log_idx_base += len(receipt.logs)
+
         if tx_index > 0:
             previous_receipt = await self.chain.coro_get_transaction_receipt_by_index(
                 tx_block_number,
@@ -351,7 +360,7 @@ class Eth(Eth1ChainRPCModule):
         else:
             tx_gas_used = receipt.gas_used
 
-        return to_receipt_response(receipt, transaction, tx_index, block_header, tx_gas_used)
+        return to_receipt_response(receipt, transaction, tx_index, log_idx_base, block_header, tx_gas_used)
 
     @format_params(decode_hex)
     async def getUncleCountByBlockHash(self, block_hash: Hash32) -> str:
@@ -408,8 +417,11 @@ class Eth(Eth1ChainRPCModule):
             block = cast(VedaBlock, await self.chain.coro_get_canonical_block_by_number(block_number))
 
             receipts = block.get_receipts(self.chain.chaindb)
+
+            receipt_log_counter = 0
+
             for idx, (transaction, receipt) in enumerate(zip(block.transactions, receipts)):
-                for log in receipt.logs:
+                for log_receipt_index, log in enumerate(receipt.logs):
                     # filter address field
                     if filter_params.address:
                         if isinstance(filter_params.address, str):
@@ -435,8 +447,10 @@ class Eth(Eth1ChainRPCModule):
                         if topics_filtered:
                             continue
 
-                    data = to_log_dict(block, log, transaction, idx)
+                    data = to_log_dict(block, log, transaction, receipt_log_counter + log_receipt_index)
                     resp.append(data)
+
+                receipt_log_counter += len(receipt.logs)
         return resp
 
     @format_params(decode_hex)

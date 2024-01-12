@@ -272,7 +272,7 @@ class InternalRPCServer:
                 raise
             return None, exc
         except Exception as exc:
-            self.logger.warning("RPC method caused exception")
+            self.logger.warning("RPC method caused exception", exc_info=True)
             if self.debug_mode:
                 raise
             return None, exc

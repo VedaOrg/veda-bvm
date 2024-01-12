@@ -341,7 +341,7 @@ class Eth(Eth1ChainRPCModule):
 
         # calculate log_idx_base
         log_idx_base = 0
-        for i in range(tx_index - 1):
+        for i in range(tx_index):
             receipt = await self.chain.coro_get_transaction_receipt_by_index(
                 tx_block_number,
                 tx_index

@@ -67,7 +67,7 @@ class Message(MessageAPI):
         self.sender = sender
 
         # validate_uint256(value, title="Message.value")
-        # self.value = value
+        self.value = 0
 
         validate_is_bytes_or_view(data, title="Message.data")
         self.data = data

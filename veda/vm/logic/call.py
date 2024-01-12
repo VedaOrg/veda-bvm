@@ -281,7 +281,8 @@ class DelegateCall(BaseCall):
 
         to = computation.msg.storage_address
         sender = computation.msg.sender
-        value = computation.msg.value
+        # value = computation.msg.value
+        value = 0
 
         return (
             gas,

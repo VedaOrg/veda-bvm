@@ -160,7 +160,12 @@ class InternalRPCServer:
                         f"Invalid sender address: {tx.sender}"
                     )
 
-                data = decode_hex(tx.data)
+                try:
+                    data = decode_hex(tx.data)
+                except Exception as e:
+                    self.logger.error("Invalid transaction data:, idx: %s, sender: %s", transaction_idx, tx.sender)
+                    continue
+
                 tx_hash = decode_hex(tx.txHash)
                 if len(tx_hash) != 32:
                     raise ValidationError(

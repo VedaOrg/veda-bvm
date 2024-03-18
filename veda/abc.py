@@ -1019,6 +1019,14 @@ class ChainDatabaseAPI(HeaderDatabaseAPI):
     #
     # Block API
     #
+
+    @abstractmethod
+    def reset_to_block(self, header: BlockHeaderAPI) -> Tuple[Tuple[BlockHeaderAPI, ...], Tuple[BlockHeaderAPI, ...]]:
+        """
+        Reset the chain to the given header.
+        """
+        ...
+
     @abstractmethod
     def persist_block(
         self,

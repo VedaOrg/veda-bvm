@@ -187,6 +187,11 @@ class NewBlockImported(BaseEvent):
 
     block: BlockAPI
 
+@dataclass
+class BlockReset(BaseEvent):
+    new_canonical_head: BlockHeaderAPI
+    old_canonical_head: BlockHeaderAPI
+
 
 @dataclass
 class DoStatelessBlockImport(BaseRequestResponseEvent[StatelessBlockImportDone]):

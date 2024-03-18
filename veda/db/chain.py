@@ -99,6 +99,9 @@ class ChainDB(HeaderDB, ChainDatabaseAPI):
     def __init__(self, db: AtomicDatabaseAPI) -> None:
         self.db = db
 
+    def reset_to_block(self, header: BlockHeaderAPI) -> Tuple[Tuple[BlockHeaderAPI, ...], Tuple[BlockHeaderAPI, ...]]:
+        return self._set_as_canonical_chain_head(self.db, header, GENESIS_PARENT_HASH)
+
     def get_chain_gaps(self) -> ChainGaps:
         return self._get_chain_gaps(self.db)
 

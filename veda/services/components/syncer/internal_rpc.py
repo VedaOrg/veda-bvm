@@ -1,5 +1,6 @@
 import json
 import time
+from asyncio import Lock
 from typing import (
     Any,
     Dict,
@@ -28,7 +29,7 @@ from veda.events import NewBlockImportStarted, NewBlockImportFinished, NewBlockI
 from veda.exceptions import VMError
 from veda.rpc.base import AsyncChainAPI
 from veda.rpc.chain import VedaAsyncChain
-from veda.sync.common.events import NewBlockImported
+from veda.sync.common.events import NewBlockImported, BlockReset
 from pydantic import BaseModel, Field
 
 from veda.vm.forks.veda.blocks import VedaBlockHeader
@@ -88,6 +89,7 @@ class InternalRPCServer:
         self.chain = chain
         self.logger: ExtendedDebugLogger = get_logger('veda.services.components.syncer.internal_rpc.InternalRPCServer')
         self.debug_mode = debug_mode
+        self.lock = Lock()
 
     def validate_block_params(self, block_params: SyncBlockModel) -> None:
         if block_params.blockNumber < 0:
@@ -105,6 +107,22 @@ class InternalRPCServer:
             raise ValidationError(
                 f"Invalid block hash: {block_params.blockHash}"
             )
+
+    async def _handle_reset(self, params):
+        block_number = params[0]
+        chain = cast(VedaAsyncChain, self.chain)
+        try:
+            header = chain.get_canonical_block_header_by_number(block_number)
+            block = chain.get_block_by_header(header)
+        except:
+            raise ValidationError(
+                f"Block {block_number} not found"
+            )
+
+        new_canonical_header, old_canonical_header = chain.chaindb.reset_to_block(header)
+
+        pass
+
 
     async def _handle_sync(self, params):
         self.event_bus.broadcast_nowait(
@@ -250,7 +268,11 @@ class InternalRPCServer:
             params = request.get('params', [])
 
             if method == 'sync':
-                result = await self._handle_sync(params)
+                async with self.lock:
+                    result = await self._handle_sync(params)
+            elif method == 'reset':
+                async with self.lock:
+                    result = await self._handle_reset(params)
             elif method == 'get_latest_block':
                 result = await self._handle_get_latest_block(params)
             else:
